@@ -14,3 +14,35 @@ header{height:76px;max-width:1440px;margin:auto;padding:0 36px;display:flex;alig
 .collection-picker{max-width:1368px;margin:14px auto 0;display:flex;gap:12px;align-items:center;padding:0 8px;font-size:13px}.collection-picker label{font-weight:750}.collection-picker select{min-height:44px;padding:9px 12px;background:var(--surface);color:var(--ink);border:1px solid var(--rule);border-radius:8px;max-width:100%}.source-provenance{font-size:12px;color:var(--muted);line-height:1.7;margin:-8px 0 24px}.source-provenance p{margin-top:7px}@media(max-width:1400px){.collection-picker{margin-inline:28px}}@media(max-width:700px){.collection-picker{margin:12px 18px 0;padding:0;display:block}.collection-picker label{display:block;margin-bottom:6px;font-size:11px}.collection-picker select{width:100%;font-size:12px}}
 
 @media(max-width:700px){.intro{display:none}.collection-picker{margin-bottom:14px}}
+
+/* A short path between action and result. No entry choreography or added latency. */
+nav{position:relative;isolation:isolate}
+nav::after{content:"";position:absolute;left:0;bottom:4px;width:1px;height:2px;background:var(--green);transform-origin:left;transform:translateX(var(--nav-x,5px)) scaleX(var(--nav-width,0));pointer-events:none}
+.workspace{position:relative}
+.workspace[aria-busy=true]::before{content:"";position:absolute;z-index:1;inset:0 auto auto 0;width:28%;height:3px;background:var(--green);animation:work-travel 1.5s ease-in-out infinite;pointer-events:none}
+.is-working{position:relative;opacity:1!important}
+.is-working::after,.step-notice.is-pending::before{content:"";display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-inline-end-color:transparent;border-radius:50%;flex:none;animation:work-spin .75s linear infinite}
+.is-working::after{margin-inline-start:8px}.step-notice.is-pending{display:flex;align-items:center;gap:10px}
+.step-notice.done{border:1px solid var(--green)}
+button:not(:disabled):active{transform:scale(.98)}
+.question-row[aria-pressed=true]{color:var(--green);border-color:var(--green)}
+.panel textarea:focus{border-color:var(--green);background:var(--surface)}
+.check-label:has(input:checked){color:var(--green)}
+#answerAudio:has(audio),#feedbackAudio:has(audio),#draftAudio:has(audio){border-radius:8px;background:var(--sage);padding:0 12px}
+@keyframes work-spin{to{transform:rotate(360deg)}}
+@keyframes work-travel{from{transform:translateX(-100%)}to{transform:translateX(460%)}}
+@keyframes dialog-arrive{from{opacity:0;transform:translateY(8px) scale(.99)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){
+ nav::after{transition:transform 230ms cubic-bezier(.16,1,.3,1)}
+ .panel textarea,.check-label{transition:background-color 150ms,border-color 150ms,color 150ms}
+ dialog[open]{animation:dialog-arrive 200ms cubic-bezier(.16,1,.3,1)}
+ .skeleton{animation:skeleton-breathe 1.2s ease-in-out infinite alternate}
+}
+@keyframes skeleton-breathe{to{opacity:.45}}
+@media(prefers-reduced-motion:reduce){
+ nav::after{transition:none}.workspace[aria-busy=true]::before{animation:none;width:100%;opacity:.45}
+ .is-working::after,.step-notice.is-pending::before{animation:none;border-style:dotted}
+ button:not(:disabled):active{transform:none}
+}
+.motion-paused *,.motion-paused::before{animation-play-state:paused!important}
+.motion-paused .workspace::before,.motion-paused .is-working::after,.motion-paused .step-notice::before{animation-play-state:paused!important}

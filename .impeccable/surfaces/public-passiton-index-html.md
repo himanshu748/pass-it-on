@@ -24,3 +24,9 @@ Shared reviewed answers include Copy question link and Save answer beside voice 
 ## Real guide collection
 
 A labelled collection selector switches between the real Open Source Guides collection and fictional grant practice. Source attribution, license, checked date and pinned revision appear beside the excerpts. Starter explanations are labelled separately from community reviews. On mobile the decorative introduction is hidden to bring guidance into view sooner.
+
+## Interaction feedback
+
+Navigation uses a short sliding marker and a 220ms task transition. Async actions show a spinner on the initiating button, a pending notice and an indeterminate workspace edge. Source reading remains available while a task runs; mutating controls preserve their disabled gates across renders. Unchanged task markup is retained so background refreshes do not discard focus or open excerpts. Dialogs and source disclosures have brief transitions. Reduced motion keeps static state feedback and removes spatial movement. No animation delays a request.
+
+Verified 7 September 2026: 40 tests passed. Desktop and 390px mobile browser checks covered navigation, provider-error recovery, pending spinners under an artificial 1.8-second local API delay, and preserved draft text/focus after delayed retrieval. Mobile document width matched 390px. These were local interaction checks, not new provider success claims.

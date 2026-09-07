@@ -1,3 +1,4 @@
+import {captureFocus,restoreFocus,animateChange,syncBusyControls,updateNavigation} from './interactions.js';
 import {state,current,esc,$} from './state.js';
 import {statusLabel,sectionTitle} from './labels.js';
 export const mic='<img class="icon" src="/passiton/icons/microphone.svg" alt="" width="21" height="21">';
@@ -24,7 +25,8 @@ export function fundingView(r){const b=state.catalog.bounty;if(!r.review)return 
   return `<h3>A contribution worth passing on</h3><p>This contribution was approved in the demo reviewer role. The sponsor payment links to this contribution and handbook version.</p><p class="payment-amount">${esc(b.label)}</p><p class="muted">Fixed demo contributor wallet</p><div class="wallet">${esc(b.recipient)}</div>${r.payment?`<div class="feedback"><h4>Payment finalized on Solana devnet</h4><p>${esc(b.label)} paid to the demo contributor.</p><p class="payment-proof"><a href="${esc(r.payment.explorer)}" target="_blank" rel="noopener">Inspect the transaction</a></p><details><summary>Contribution memo</summary><pre>${esc(r.payment.memo)}</pre></details></div>`:r.pending?`<div class="feedback"><h4>Payment submitted</h4><p>Verify this transaction before doing anything else. Do not pay again while it is pending.</p><a class="payment-proof" href="https://explorer.solana.com/tx/${esc(r.pending.signature)}?cluster=devnet" target="_blank" rel="noopener">Inspect submitted transaction</a></div>${action('verifyPayment','Verify finalization')}`:`<label class="check-label"><input id="fundConsent" type="checkbox"> I will use a wallet with devnet test SOL. I understand this is a demo payment with no monetary value.</label>${action('pay','Connect wallet & pay test bounty','button',true)}<p class="muted" style="margin-top:14px">Uses Phantom in a supported browser. A wallet signature is required. No wallet key is stored on the server.</p>`}<p class="muted" style="margin-top:20px">This is a direct sponsor transfer, not escrow. Payment proves test SOL moved; it does not prove an answer is correct.</p>${action('export','Export contribution evidence','text-button')}`;
 }
 export function renderStatus(){const r=current();$('answerStatus').textContent=!r.result&&!r.review&&!state.shared.length&&state.catalog.starters?.[state.questionId]?.[state.language]?'Prepared guide answer available':statusLabel(r,state.shared.length);}
-export function render(){if(!state.catalog)return;const r=current(),q=state.catalog.questions.find(q=>q.id===state.questionId);
+let lastView='',lastMode='',lastInteractionHTML='';
+export function render(){if(!state.catalog)return;const viewKey=`${state.mode}:${state.questionId}:${state.language}`,sameView=viewKey===lastView,focus=captureFocus(),previousMode=lastMode;const r=current(),q=state.catalog.questions.find(q=>q.id===state.questionId);
   $('mobileQuestion').innerHTML=state.catalog.questions.map(item=>`<option value="${item.id}" ${item.id===q.id?'selected':''}>${esc(item.title)}</option>`).join('');
   const src=state.catalog.source;
   $('collectionNotice').textContent=src.fictional?'Practice collection: fictional scholarship · Solana devnet':'Real public guide · Sponsor payments use Solana devnet test SOL';
@@ -36,12 +38,17 @@ export function render(){if(!state.catalog)return;const r=current(),q=state.cata
   $('questions').innerHTML=state.catalog.questions.map(q=>`<button class="question-row" data-question="${q.id}" aria-pressed="${q.id===state.questionId}"><strong>${esc(q.title)}</strong><small>${esc(state.catalog.languages[q.language])} suggested</small></button>`).join('');
   renderStatus();
   $('sourceExcerpt').innerHTML=q.sectionIds.map(id=>{const s=state.catalog.source.sections.find(s=>s.id===id);return `<h4>${esc(sectionTitle(s.title))}</h4><blockquote>“${esc(s.text)}”</blockquote>`;}).join('');
-  $('interaction').innerHTML=({ask:askView,contribute:contributionView,review:reviewView,fund:fundingView}[state.mode])(r);
+  const interactionHTML=({ask:askView,contribute:contributionView,review:reviewView,fund:fundingView}[state.mode])(r);
+  if(!sameView||interactionHTML!==lastInteractionHTML){$('interaction').innerHTML=interactionHTML;if(sameView)animateChange($('interaction'));}
+  lastInteractionHTML=interactionHTML;
   document.querySelectorAll('nav [data-mode]').forEach(b=>{if(b.dataset.mode===state.mode)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
   document.querySelectorAll('.steps [data-mode]').forEach(b=>{b.toggleAttribute('data-active',b.dataset.mode===state.mode);if(b.dataset.mode===state.mode)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');const done=Boolean(b.dataset.mode==='ask'&&state.requests[`${state.questionId}:${state.language}`]||b.dataset.mode==='contribute'&&r.result?.status==='ready'||b.dataset.mode==='review'&&r.review||b.dataset.mode==='fund'&&r.payment);b.classList.toggle('complete',done);
     // Say the stage state in the accessible name so it is not carried by colour alone.
     const label=b.textContent.trim().replace(/^\d+\s*/,'');b.setAttribute('aria-label',`Stage ${b.textContent.trim().slice(0,1)}, ${label}${done?', done':b.dataset.mode===state.mode?', current stage':''}`);});
   renderIntegrations();
+  syncBusyControls();updateNavigation();
+  if(!sameView&&lastView){const modes=['ask','contribute','review','fund'];animateChange($('interaction'),'view',modes.indexOf(state.mode)>=modes.indexOf(previousMode)?1:-1);}
+  lastView=viewKey;lastMode=state.mode;restoreFocus(focus);
 }
 export function renderIntegrations(){const c=state.catalog.integrations,p=state.providers;const rows=[['Gemini',p.gemini||c.gemini,'Checks contributions against the selected source and asks for corrections.'],['ElevenLabs',p.elevenlabs||c.elevenlabs,`Spoken questions, follow-ups, and answers. Transcription: ${p.transcription||c.transcription}.`],['Snowflake',p.snowflake||c.snowflake,'Joins question demand with reviewed answers by language and source version.'],['Solana',p.solana||'devnet configured','Verifies the exact sponsor transfer, recipient, and contribution memo.']];$('integrations').innerHTML=rows.map(([name,status,role])=>`<div><strong>${name}</strong><span>${esc(status)}</span><p>${esc(role)}</p></div>`).join('');}
 export function renderCoverage(){const server=state.coverage;let rows=server?.source==='snowflake'?server.rows:state.catalog.questions.flatMap(q=>['en','hi'].map(language=>{const key=`${q.id}:${language}`,requests=state.requests[key]?1:0,reviewed=state.records[key]?.review?1:0;return {question_id:q.id,language,requests,reviewed,unmet_requests:reviewed?0:requests};})).sort((a,b)=>b.unmet_requests-a.unmet_requests||b.requests-a.requests);
