@@ -91,21 +91,21 @@ $('mobileQuestion').addEventListener('change',()=>selectQuestion($('mobileQuesti
 $('syncKnowledge').onclick=()=>task(syncKnowledge,'Syncing local requests and approved answers…');
 $('language').addEventListener('change',()=>selectQuestion(state.questionId,$('language').value));$('openSource').onclick=()=>$('sourceDialog').showModal();$('closeSource').onclick=()=>$('sourceDialog').close();$('cancelVoice').onclick=()=>$('voiceDialog').close();$('beginVoice').onclick=beginInterview;$('viewCoverage').onclick=()=>$('coverageSection').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});$('refreshCoverage').onclick=()=>task(async()=>{await refreshCoverage();notice('Coverage refreshed.');},'Refreshing coverage…');$('exportRecord').onclick=exportRecord;
 window.addEventListener('pagehide',()=>{clearTimeout(recordTimer);stream?.getTracks().forEach(t=>t.stop());});
-async function init(){try{
+async function init(){const initialSearch=location.search;setBusy(true);notice('Opening the guide…');try{
   state.catalog=await api('/catalog');
   if(state.sourceVersion&&state.sourceVersion!==state.catalog.sourceVersion){state.records={};state.requests={};notice('The source changed. Previous approvals in this collection were cleared for a new check.');}
   state.sourceVersion=state.catalog.sourceVersion;
   if(!state.catalog.questions.some(q=>q.id===state.questionId))state.questionId=state.catalog.questions[0].id;
   if(!state.catalog.languages[state.language])state.language='en';
-  const entry=entryFromLink(location.search,state.catalog);if(entry)Object.assign(state,entry);
+  const entry=entryFromLink(initialSearch,state.catalog);if(entry)Object.assign(state,entry);
   if(!state.sessionToken)state.sessionToken=(await api('/session',{})).token;
-  if(new URLSearchParams(location.search).get('example')==='correction'){
+  if(new URLSearchParams(initialSearch).get('example')==='correction'){
     state.mode='contribute';
     if(!current().text){edit((state.catalog.questions.find(q=>q.id===state.questionId)?.examples||sample[state.questionId]).wrong);notice('This example contains deliberate mistakes. Run the source check to find them.');}
   }
-  syncLocation();save();render();
+  syncLocation();save();render();setBusy(false);if($('stepNotice').textContent==='Opening the guide…')notice('');
   const source=state.catalog.source;
   $('allSources').innerHTML=source.sections.map(s=>`<section class="source-section" id="${s.id}"><h3>${esc(sectionTitle(s.title))}</h3><p>${esc(s.text)}</p></section>`).join('')+`<p class="muted">Source version ${esc(state.sourceVersion.slice(0,16))}</p>`;
   await Promise.allSettled([refreshCoverage(),loadShared(),api('/coverage/sql').then(d=>{$('coverageSQL').textContent=d.sql;})]);
-}catch(e){notice(e.message,true);}}
+}catch(e){setBusy(false);notice(e.message,true);}}
 init();
